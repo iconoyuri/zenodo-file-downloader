@@ -34,7 +34,7 @@ def fetch_metadata(url , file_types, queries, access_token, file_name, page_leng
 def save_metadata(datasets, file_name):
     print("__________ metadata file updating __________")
     with open(f"{file_name}.json", "w") as f:
-        f.write(json.dumps(datasets))
+        f.write(json.dumps(datasets, indent=4))
     print("__________ metadata file updating over __________")
 
 def load_metadata_file(file_name):
