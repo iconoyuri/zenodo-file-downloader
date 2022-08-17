@@ -1,7 +1,8 @@
 import zipfile
-from functions import download_files_0, download_files_1, create_storage_directory
+from functions import download_files_0, download_files_1, create_storage_directory, get_directory_path
 from globals import *
 from typing import List
+import os
 
 file_types = ["zip"]
 metadata_file_name = "zip_metadata"
@@ -10,7 +11,8 @@ unzipped_files_folder_name = "zip_datasets"
 
 
 def list_all_files(directory) -> List[str]:
-    entries = os.walk(directory)
+    _directory = get_directory_path(directory)
+    entries = os.walk(_directory)
     file_list = []
     for entry in entries:
         file_list += [os.path.join(f"{entry[0]}/", file) for file in entry[2]]
@@ -23,14 +25,14 @@ def unzip_files(zip_files_folder_name):
         with zipfile.ZipFile(file , "r") as zip_ref:
             zip_ref.extractall(files_directory)
 
-def purge_zips_directory():
-    file_list = list_all_files(unzipped_files_folder_name)
+def purge_zips_directory(file_folder):
+    file_list = list_all_files(file_folder)
     for file in file_list:
         if file.lower().endswith(('.csv', '.xlsx')):
-            ...
+            os.rename(file, f"{get_directory_path(file_folder)}/{os.path.basename(file)}")
         else:
             os.remove(file)
 
-download_files_0(url, file_types, queries, access_token, metadata_file_name, files_folder_name)
-# download_files_1(metadata_file_name, files_folder_name)
-unzip_files(files_folder_name)
+# download_files_0(url, file_types, queries, access_token, metadata_file_name, files_folder_name)
+download_files_1(metadata_file_name, files_folder_name)
+# unzip_files(files_folder_name)

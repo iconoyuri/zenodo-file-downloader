@@ -58,7 +58,7 @@ def download_dataset(dataset, path):
         file_content = requests.get(dataset["file_link"], allow_redirects=True).content
         f.write(file_content)
 
-def create_storage_directory(directory="files", parent=""):
+def create_storage_directory(directory, parent=""):
     parent_directory = os.getcwd()
     path = os.path.join(parent or parent_directory, directory)
     try:
@@ -67,6 +67,12 @@ def create_storage_directory(directory="files", parent=""):
         print("storage folder already exists")
     finally:
         return path
+
+def get_directory_path(directory):
+    parent_directory = os.getcwd()
+    path = os.path.join(parent_directory, directory)
+    return path
+
 
 def get_metadata(url, file_types, page_length, query, access_token):
     params = {
