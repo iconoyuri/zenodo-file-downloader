@@ -8,7 +8,7 @@ def download_files_0(url, file_types, queries, access_token, metadata_file_name,
     metadata = load_metadata_file(metadata_file_name)
     download_files(metadata, metadata_file_name, files_folder_name)
 
-def download_files(metadata_file_name, files_folder_name):
+def download_files_1(metadata_file_name, files_folder_name):
     metadata = load_metadata_file(metadata_file_name)
     download_files(metadata, metadata_file_name, files_folder_name)
 

@@ -1,5 +1,5 @@
 import zipfile
-from functions import download_files_0, download_files, create_storage_directory
+from functions import download_files_0, download_files_1, create_storage_directory
 from globals import *
 from typing import List
 
@@ -32,5 +32,5 @@ def purge_zips_directory():
             os.remove(file)
 
 download_files_0(url, file_types, queries, access_token, metadata_file_name, files_folder_name)
-# download_files(metadata_file_name, files_folder_name)
+# download_files_1(metadata_file_name, files_folder_name)
 unzip_files(files_folder_name)
