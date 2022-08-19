@@ -1,5 +1,10 @@
 __pycache__
-sample
 env
-files
+
+sample
+
+xlsx_csv_datasets
 zip_datasets
+
+xlsx_csv_metadata.json
+zip_metadata.json
