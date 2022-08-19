@@ -8,3 +8,4 @@ zenodo_url = os.getenv("ZENODO_URL")
 queries = ["food", "nutrition", "nutrients"]
 # page_length = 10000
 url = f"{zenodo_url}records/?page=1&type=dataset"
+max_size = 104857600

@@ -1,6 +1,7 @@
 import requests
 import os
 import json
+from globals import max_size
 
 def download_files_0(url, file_types, queries, access_token, metadata_file_name, files_folder_name):
     metadata = fetch_metadata(url, file_types, queries, access_token, metadata_file_name)
@@ -31,26 +32,18 @@ def fetch_metadata(url , file_types, queries, access_token, file_name, page_leng
     save_metadata(datasets, file_name)
     return datasets
 
-def save_metadata(datasets, file_name):
-    print("__________ metadata file updating __________")
-    with open(f"{file_name}.json", "w") as f:
-        f.write(json.dumps(datasets, indent=4))
-    print("__________ metadata file updating over __________")
-
-def load_metadata_file(file_name):
-    print("resuming metadata")
-    with open(f"{file_name}.json") as f:
-        return json.load(f)
-
 def download_files(datasets, metadata_file, storage_dir):
     path = create_storage_directory(storage_dir)
     for dataset in datasets:
-        if not dataset["downloaded"] :
-            download_dataset(dataset, path)
-            dataset["downloaded"] = True
-            save_metadata(datasets, metadata_file)
+        if is_file_relevant(dataset):
+            if not dataset["downloaded"] :
+                download_dataset(dataset, path)
+                dataset["downloaded"] = True
+                save_metadata(datasets, metadata_file)
+            else:
+                print("File already downloaded")
         else:
-            print("File already downloaded")
+            print("Too big file")
 
 def download_dataset(dataset, path):
     with open(f"{path}/{dataset['file_title']}", "wb") as f:
@@ -94,6 +87,7 @@ def get_metadata(url, file_types, page_length, query, access_token):
                         "file_title" : file["key"], 
                         "file_type" : file["type"], 
                         "file_link" : file["links"]["self"],
+                        "file_size" : file["size"],
                         "downloaded" : False
                     })
     
@@ -102,4 +96,29 @@ def get_metadata(url, file_types, page_length, query, access_token):
             "next" : "next" in r["links"] and r["links"]["next"]
         }
 
+def get_file_size(url):
+    response = requests.head(url, allow_redirects=True)
+    file_size = response.headers['Content-Length']
+    return file_size
 
+def save_metadata(datasets, file_name):
+    print("__________ metadata file updating __________")
+    with open(f"{file_name}.json", "w") as f:
+        f.write(json.dumps(datasets, indent=4))
+    print("__________ metadata file updating over __________")
+
+def load_metadata_file(file_name):
+    print("resuming metadata")
+    with open(f"{file_name}.json") as f:
+        return json.load(f)
+
+def is_file_relevant(file):
+    # Here we ensure that the file isn't too big, doesn't overlap the max size allowed for a file to download
+    return file["size"] < max_size
+
+def update_datasets_file_size(file_name):
+    print("Updating metadata : adding files size")
+    datasets = load_metadata_file(file_name)
+    for dataset in datasets:
+        dataset["file_size"] = get_file_size(dataset['file_link'])
+        save_metadata(datasets, file_name)
