@@ -6,13 +6,14 @@ from globals import max_size
 
 def fetch_online_then_download(url, file_types, queries, access_token, metadata_file_name, files_folder_name):
     metadata = fetch_metadata(url, file_types, queries, access_token, metadata_file_name)
-    # save_metadata(metadata, metadata_file_name)
-    # metadata = load_metadata_file(metadata_file_name)
     download_files(metadata, metadata_file_name, files_folder_name, max_size)
 
-def load_then_download(metadata_file_name, files_folder_name):
-    metadata = load_metadata_file(metadata_file_name)    
-    download_files(metadata, metadata_file_name, files_folder_name, max_size)
+def load_then_download(url, file_types, queries, access_token, metadata_file_name, files_folder_name):
+    try:
+        metadata = load_metadata_file(metadata_file_name)    
+        download_files(metadata, metadata_file_name, files_folder_name, max_size)
+    except FileNotFoundError:
+        fetch_online_then_download(url, file_types, queries, access_token, metadata_file_name, files_folder_name)
 
 
 def fetch_metadata(url , file_types, queries, access_token, file_name, page_length = 50 ):

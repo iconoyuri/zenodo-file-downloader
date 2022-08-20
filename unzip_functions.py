@@ -1,13 +1,7 @@
 import zipfile
 from functions import list_all_files, create_storage_directory, get_directory_path
 from globals import *
-from typing import List
 import os
-
-# file_types = ["zip"]
-# metadata_file_name = "zip_metadata"
-# files_folder_name = "zip_datasets"
-# unzipped_files_folder_name = "zip_datasets"
 
 
 def unzip_files(zip_files_folder_name):
