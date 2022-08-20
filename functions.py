@@ -17,7 +17,7 @@ def load_then_download(url, file_types, queries, access_token, metadata_file_nam
     except FileNotFoundError:
         fetch_online_then_download(url, file_types, queries, access_token, metadata_file_name, files_folder_name)
 
-def fetch_metadata(url , file_types, queries, access_token, file_name, page_length = 100 ):
+def fetch_metadata(url , file_types, queries, access_token, file_name, page_length = 10000 ):
     print("__________ metadata querying started __________")
 
     datasets = []
