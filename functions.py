@@ -28,7 +28,7 @@ def fetch_metadata(url , file_types, queries, access_token, file_name, page_leng
             resp = get_metadata(_url, file_types, page_length, query, access_token)
             datasets += resp["hits"]
             _url = resp["next"]
-            break
+            # break
             if not _url:
                 break
 
