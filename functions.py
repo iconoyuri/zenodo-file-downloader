@@ -4,20 +4,20 @@ from typing import List
 import requests
 import os
 import json
-from globals import max_size
+from globals import max_size, min_size, page_length, access_token, url
 
-def fetch_online_then_download(url, file_types, queries, access_token, metadata_file_name, files_folder_name):
-    metadata = fetch_metadata(url, file_types, queries, access_token, metadata_file_name)
-    download_files(metadata, metadata_file_name, files_folder_name, max_size)
+def fetch_online_then_download( file_types, queries, metadata_file_name, files_folder_name, url = url, access_token = access_token):
+    metadata = fetch_metadata(url, file_types, queries, access_token, metadata_file_name, page_length)
+    download_files(metadata, metadata_file_name, files_folder_name)
 
-def load_then_download(url, file_types, queries, access_token, metadata_file_name, files_folder_name):
+def load_then_download( file_types, queries, metadata_file_name, files_folder_name, url = url, access_token = access_token):
     try:
-        metadata = load_metadata_file(metadata_file_name)    
-        download_files(metadata, metadata_file_name, files_folder_name, max_size)
+        metadata = load_metadata_file(metadata_file_name)
+        download_files(metadata, metadata_file_name, files_folder_name)
     except FileNotFoundError:
-        fetch_online_then_download(url, file_types, queries, access_token, metadata_file_name, files_folder_name)
+        fetch_online_then_download( file_types, queries, metadata_file_name, files_folder_name, url, access_token)
 
-def fetch_metadata(url , file_types, queries, access_token, file_name, page_length = 10000 ):
+def fetch_metadata(url , file_types, queries, access_token, file_name, page_length = page_length ):
     print("__________ metadata querying started __________")
 
     datasets = []
@@ -28,7 +28,6 @@ def fetch_metadata(url , file_types, queries, access_token, file_name, page_leng
             resp = get_metadata(_url, file_types, page_length, query, access_token)
             datasets += resp["hits"]
             _url = resp["next"]
-            # break
             if not _url:
                 break
 
@@ -36,21 +35,22 @@ def fetch_metadata(url , file_types, queries, access_token, file_name, page_leng
     save_metadata(datasets, file_name)
     return datasets
 
-def download_files(datasets, metadata_file, storage_dir, max_size):
+def download_files(datasets, metadata_file, storage_dir):
     path = create_storage_directory(storage_dir)
-    for dataset in datasets:
-        for file in dataset["files"] :
-            if is_file_relevant(file, max_size):
-                if not file["downloaded"] :
-                    print(path)
-                    download_file(file, path)
+    for x,dataset in enumerate(datasets):
+        # if "files" in dataset:
+        for y,file in enumerate(dataset["files"]) :
+            if not file["downloaded"] :
+                if download_file(file, path) :
                     file["downloaded"] = True
-                    save_metadata(datasets, metadata_file)
                     print(f" - - - - Downloaded successfully : {file['title']}")
-                else:
-                    print(f"+++++++ Downloaded : {file['title']}")
+                else: 
+                    dataset["files"][y] = {} # deleting the file from the dataset                        
+                save_metadata(datasets, metadata_file)
             else:
-                print("Not relevant file")
+                print(f"+++++++ Already Downloaded : {file['title']}")
+        if is_dataset_empty(dataset):
+            datasets[x] = {}
 
 def download_file(file, path):
     file_name = os.path.join(path, file["title"])
@@ -62,33 +62,49 @@ def download_file(file, path):
         f.write(file_content)
         if file["type"] == 'zip':
             try:
-                unzip_file(file_name, unziped_directory_name)
+                filtered_list = unzip_file(file_name, unziped_directory_name)
                 shutil.rmtree(unziped_directory_name)
+                if len(filtered_list) > 0:
+                    file["unzipped_files"] = filtered_list
+                    return True
             except zipfile.BadZipFile:
                 print("bad file")
-            os.remove(file_name)
+                return False
+            finally:
+                os.remove(file_name)
+        else: 
+            return True
+    return False
 
 def unzip_file(file_name, target_directory):
-    print(file_name)
     with zipfile.ZipFile(file_name , "r") as zip_ref:
         zip_ref.extractall(target_directory)
-    purge_zip_directory(target_directory)
+    filtered_list = purge_zip_directory(target_directory)
+    return filtered_list
 
 def purge_zip_directory(directory):
     file_list = list_all_files(directory)
+    filtered_list = []
     i = 1
     for file in file_list:
-        if file.lower().endswith(('.csv', '.xlsx')):
-            directory_basename = os.path.basename(directory)
-            directory_id = directory_basename[0:directory_basename.index(" -")] # The generated index of the file's parent folder 
-            # We rename the file and move it to the zip files directory
-            # It must be the grandfather folder ;)
-            new_file_name = f"{directory_id}_Z{i} - {os.path.basename(file)}"
-            os.rename(file, os.path.join(os.path.dirname(directory), new_file_name))
-            i+=1
-
+        if file.lower().endswith(('.csv', '.xlsx')) :
+            if is_zip_child_relevant(filename=file) :
+                directory_basename = os.path.basename(directory)
+                directory_id = directory_basename[0:directory_basename.index(" -")] # The generated index of the file's parent folder 
+                # We rename the file and move it to the zip files directory
+                # It must be the grandfather folder ;)
+                new_file_name = f"{directory_id}_Z{i} - {os.path.basename(file)}"
+                os.rename(file, os.path.join(os.path.dirname(directory), new_file_name))
+                filtered_list.append(new_file_name)
+                i+=1
+            else : 
+                # If the unzipped folder contains a file for wich min_size < size < max_size, then, 
+                # that folder is considered as unconsistent
+                filtered_list = []
+                break
         else:
             os.remove(file)
+    return filtered_list
 
 def get_metadata(url, file_types, page_length, query, access_token):
     params = {
@@ -111,15 +127,17 @@ def get_metadata(url, file_types, page_length, query, access_token):
             for file in hit["files"]:
                 if file["type"] in file_types:
                     rf_file_id = f"{rf_hit_id}_F{j}"
-                    files.append({
+                    file = {
                         "id" : rf_file_id,
                         "title" : f"{rf_file_id} - {file['key']}", 
                         "type" : file["type"], 
                         "link" : file["links"]["self"],
                         "size" : int(file["size"]),
                         "downloaded" : False,
-                    })
-                    j+=1
+                    }
+                    if is_file_relevant(file):
+                        files.append(file)
+                        j+=1
 
             if len(files) > 0:
                 rf_hit = { # reformated hit
@@ -139,6 +157,7 @@ def get_metadata(url, file_types, page_length, query, access_token):
 
 def save_metadata(datasets, file_name):
     print("__________ metadata file updating __________")
+    datasets = [dataset for dataset in datasets if dataset != {}]
     with open(f"{file_name}.json", "w") as f:
         f.write(json.dumps(datasets, indent=4))
     print("__________ metadata file updating over __________")
@@ -148,10 +167,17 @@ def load_metadata_file(file_name):
     with open(f"{file_name}.json") as f:
         return json.load(f)
 
-def is_file_relevant(file, max_size):
+def is_file_relevant(file, min_size = min_size, max_size = max_size):
     # Here we ensure that the file isn't too big, doesn't overlap the max size allowed for a file to download
-    # print(file)
-    return int(file["size"]) < max_size
+    size = int(file["size"])
+    a = min_size < size and size < max_size
+    return a
+
+def is_zip_child_relevant(filename, min_size = min_size, max_size = max_size):
+    # Here we ensure that the file isn't too big, doesn't overlap the max size allowed for a file to download
+    size = os.path.getsize(filename)
+    a = min_size < size and size < max_size
+    return a
 
 def create_storage_directory(directory, parent=""):
     parent_directory = os.getcwd()
@@ -177,7 +203,11 @@ def list_all_files(directory) -> List[str]:
         file_list += [os.path.join(f"{entry[0]}/", file) for file in entry[2]]
     return file_list
 
-
+def is_dataset_empty(dataset):
+    for file in dataset["files"]:
+        if file != {}:
+            return False
+    return True
 # def get_file_size(url):
 #     response = requests.head(url, allow_redirects=True)
 #     file_size = response.headers['Content-Length']
