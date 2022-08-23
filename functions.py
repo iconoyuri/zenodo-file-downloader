@@ -6,6 +6,8 @@ import os
 import json
 from globals import max_size, min_size, page_length, access_token, url
 
+# index = 0
+
 def fetch_online_then_download( file_types, queries, metadata_file_name, files_folder_name, url = url, access_token = access_token):
     metadata = fetch_metadata(url, file_types, queries, access_token, metadata_file_name, page_length)
     download_files(metadata, metadata_file_name, files_folder_name)
@@ -38,7 +40,6 @@ def fetch_metadata(url , file_types, queries, access_token, file_name, page_leng
 def download_files(datasets, metadata_file, storage_dir):
     path = create_storage_directory(storage_dir)
     for x,dataset in enumerate(datasets):
-        # if "files" in dataset:
         for y,file in enumerate(dataset["files"]) :
             if not file["downloaded"] :
                 if download_file(file, path) :
@@ -82,21 +83,19 @@ def unzip_file(file_name, target_directory):
     filtered_list = purge_zip_directory(target_directory)
     return filtered_list
 
+index = {"count" : 1}
 def purge_zip_directory(directory):
     file_list = list_all_files(directory)
     filtered_list = []
-    i = 1
     for file in file_list:
         if file.lower().endswith(('.csv', '.xlsx')) :
             if is_zip_child_relevant(filename=file) :
-                directory_basename = os.path.basename(directory)
-                directory_id = directory_basename[0:directory_basename.index(" -")] # The generated index of the file's parent folder 
-                # We rename the file and move it to the zip files directory
-                # It must be the grandfather folder ;)
-                new_file_name = f"{directory_id}_Z{i} - {os.path.basename(file)}"
+                file_extension = os.path.splitext(file)[1]
+                new_file_name = f"KNSRDS{index['count']}{file_extension}"
+                print(new_file_name)
                 os.rename(file, os.path.join(os.path.dirname(directory), new_file_name))
                 filtered_list.append(new_file_name)
-                i+=1
+                index["count"] += 1
             else : 
                 # If the unzipped folder contains a file for wich min_size < size < max_size, then, 
                 # that folder is considered as unconsistent
@@ -121,15 +120,16 @@ def get_metadata(url, file_types, page_length, query, access_token):
     hits = []
     for hit in r["hits"]["hits"]:
         if "files" in hit :
-            rf_hit_id = f"HIT{i}" # reformated hit identifier
+            # rf_hit_id = f"HIT{i}" # reformated hit identifier
             files = []
-            j = 1
+            # j = 1
             for file in hit["files"]:
                 if file["type"] in file_types:
-                    rf_file_id = f"{rf_hit_id}_F{j}"
+                    # rf_file_id = f"{rf_hit_id}_F{j}"
                     file = {
-                        "id" : rf_file_id,
-                        "title" : f"{rf_file_id} - {file['key']}", 
+                        # "id" : rf_file_id,
+                        # "title" : f"{rf_file_id} - {file['key']}", 
+                        "title" : f"KNSRDS{i}.{file['type']}", 
                         "type" : file["type"], 
                         "link" : file["links"]["self"],
                         "size" : int(file["size"]),
@@ -137,18 +137,18 @@ def get_metadata(url, file_types, page_length, query, access_token):
                     }
                     if is_file_relevant(file):
                         files.append(file)
-                        j+=1
+                        i+=1
 
             if len(files) > 0:
                 rf_hit = { # reformated hit
-                    "id" : rf_hit_id,
+                    # "id" : rf_hit_id,
                     "doi" : hit["doi"],
                     "title": hit["metadata"]["title"],
                     "link" : hit["links"]["html"],
                     "files" : files
                 }
                 hits.append(rf_hit)
-                i+=1
+                # i+=1
     
     return {
             "hits" : hits,
